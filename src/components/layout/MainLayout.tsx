@@ -1,10 +1,10 @@
 
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { UserNav } from "@/components/layout/UserNav";
-import { Home, Wrench, Car, UserCircle } from "lucide-react";
+import { LayoutDashboard, Wrench, Car, UserCircle } from "lucide-react";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -13,6 +13,7 @@ interface MainLayoutProps {
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children, requiredRole }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
   
   if (loading) {
     return <div className="flex h-screen items-center justify-center">Loading...</div>;
@@ -49,22 +50,26 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, requiredRole }) => {
         {/* Mobile bottom navigation */}
         <div className="md:hidden border-t bg-background p-2">
           <div className="flex justify-between">
-            <button className="flex flex-col items-center p-2">
-              <Home className="h-5 w-5" />
-              <span className="text-xs">Dashboard</span>
-            </button>
-            <button className="flex flex-col items-center p-2">
-              <Wrench className="h-5 w-5" />
-              <span className="text-xs">Services</span>
-            </button>
-            <button className="flex flex-col items-center p-2">
-              <Car className="h-5 w-5" />
-              <span className="text-xs">Vehicles</span>
-            </button>
-            <button className="flex flex-col items-center p-2">
-              <UserCircle className="h-5 w-5" />
-              <span className="text-xs">Profile</span>
-            </button>
+            <Link to="/dashboard" className="flex flex-col items-center p-2">
+              <LayoutDashboard className={`h-5 w-5 ${location.pathname === '/dashboard' ? 'text-workshop-primary' : ''}`} />
+              <span className={`text-xs ${location.pathname === '/dashboard' ? 'text-workshop-primary' : ''}`}>Dashboard</span>
+            </Link>
+            <Link to="/my-vehicles" className="flex flex-col items-center p-2">
+              <Car className={`h-5 w-5 ${location.pathname === '/my-vehicles' ? 'text-workshop-primary' : ''}`} />
+              <span className={`text-xs ${location.pathname === '/my-vehicles' ? 'text-workshop-primary' : ''}`}>Vehicles</span>
+            </Link>
+            <Link to="/book-service" className="flex flex-col items-center p-2">
+              <Wrench className={`h-5 w-5 ${location.pathname === '/book-service' ? 'text-workshop-primary' : ''}`} />
+              <span className={`text-xs ${location.pathname === '/book-service' ? 'text-workshop-primary' : ''}`}>Book</span>
+            </Link>
+            <Link to="/service-history" className="flex flex-col items-center p-2">
+              <LayoutDashboard className={`h-5 w-5 ${location.pathname === '/service-history' ? 'text-workshop-primary' : ''}`} />
+              <span className={`text-xs ${location.pathname === '/service-history' ? 'text-workshop-primary' : ''}`}>History</span>
+            </Link>
+            <Link to="/profile" className="flex flex-col items-center p-2">
+              <UserCircle className={`h-5 w-5 ${location.pathname === '/profile' ? 'text-workshop-primary' : ''}`} />
+              <span className={`text-xs ${location.pathname === '/profile' ? 'text-workshop-primary' : ''}`}>Profile</span>
+            </Link>
           </div>
         </div>
       </div>

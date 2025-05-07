@@ -11,6 +11,9 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import Dashboard from "./pages/Dashboard";
 import BookService from "./pages/BookService";
+import MyVehicles from "./pages/MyVehicles";
+import ServiceHistory from "./pages/ServiceHistory";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +31,9 @@ const App = () => (
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/book-service" element={<BookService />} />
+            <Route path="/my-vehicles" element={<MyVehicles />} />
+            <Route path="/service-history" element={<ServiceHistory />} />
+            <Route path="/profile" element={<Profile />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
