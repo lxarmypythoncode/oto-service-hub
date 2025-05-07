@@ -1,11 +1,10 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
-import { Calendar, DollarSign, Car, FileText, Home, Settings, Tool, UserCircle, Users, Wrench, ClipboardList, LogOut } from "lucide-react";
+import { Calendar, DollarSign, Car, FileText, Home, Settings, Wrench, UserCircle, Users, LogOut, ClipboardList } from "lucide-react";
 
 interface SidebarLinkProps {
   href: string;
@@ -46,7 +45,7 @@ export function Sidebar() {
         ...commonLinks,
         { href: "/customers", icon: Users, title: "Customers" },
         { href: "/mechanics", icon: Wrench, title: "Mechanics" },
-        { href: "/services", icon: Tool, title: "Services" },
+        { href: "/services", icon: Wrench, title: "Services" },
         { href: "/inventory", icon: ClipboardList, title: "Inventory" },
         { href: "/reports", icon: FileText, title: "Reports" },
         { href: "/settings", icon: Settings, title: "Settings" },
@@ -63,7 +62,7 @@ export function Sidebar() {
       return [
         ...commonLinks,
         { href: "/my-vehicles", icon: Car, title: "My Vehicles" },
-        { href: "/book-service", icon: Tool, title: "Book Service" },
+        { href: "/book-service", icon: Wrench, title: "Book Service" },
         { href: "/service-history", icon: FileText, title: "Service History" },
         { href: "/profile", icon: UserCircle, title: "Profile" },
       ];

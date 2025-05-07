@@ -1,20 +1,16 @@
-
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Car, Tool, Clock, FileText } from "lucide-react";
+import { Car, Wrench, Clock, FileText } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 
 const CustomerDashboard: React.FC = () => {
+  
+
   return (
     <div className="flex flex-col space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Customer Dashboard</h2>
-        <p className="text-muted-foreground">
-          Track your vehicle's service history and current status.
-        </p>
-      </div>
+      
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card>
@@ -36,7 +32,7 @@ const CustomerDashboard: React.FC = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Services</CardTitle>
-            <Tool className="h-4 w-4 text-muted-foreground" />
+            <Wrench className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">1</div>
@@ -170,7 +166,7 @@ const CustomerDashboard: React.FC = () => {
           </div>
           
           <div className="flex flex-col items-center justify-center p-6 border rounded-lg w-full md:w-1/4 bg-workshop-secondary/5">
-            <Tool className="h-10 w-10 mb-2 text-workshop-secondary" />
+            <Wrench className="h-10 w-10 mb-2 text-workshop-secondary" />
             <h3 className="text-lg font-medium mb-1">Repair Service</h3>
             <p className="text-sm text-center text-muted-foreground">Fix specific issues with your vehicle</p>
           </div>

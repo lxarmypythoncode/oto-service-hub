@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Car, Clock, FileText, Tool, Users, Wrench } from "lucide-react";
+import { Car, Clock, FileText, Wrench, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
@@ -96,7 +96,7 @@ const Index = () => {
           
           <Card>
             <CardHeader>
-              <Tool className="h-10 w-10 text-workshop-primary mb-2" />
+              <Wrench className="h-10 w-10 text-workshop-primary mb-2" />
               <CardTitle>Service Management</CardTitle>
               <CardDescription>
                 Streamlined service booking and tracking process.

@@ -4,6 +4,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { UserNav } from "@/components/layout/UserNav";
+import { Home, Wrench, Car, UserCircle } from "lucide-react";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -53,7 +54,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, requiredRole }) => {
               <span className="text-xs">Dashboard</span>
             </button>
             <button className="flex flex-col items-center p-2">
-              <Tool className="h-5 w-5" />
+              <Wrench className="h-5 w-5" />
               <span className="text-xs">Services</span>
             </button>
             <button className="flex flex-col items-center p-2">
