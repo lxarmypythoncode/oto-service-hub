@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useAuth, UserRole } from "@/contexts/AuthContext";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Info } from "lucide-react";
 
 const RegisterForm: React.FC = () => {
   const [name, setName] = useState("");
@@ -16,6 +18,7 @@ const RegisterForm: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<UserRole>("customer");
   const [isLoading, setIsLoading] = useState(false);
+  const [showMechanicInfo, setShowMechanicInfo] = useState(false);
   const { register } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -42,11 +45,22 @@ const RegisterForm: React.FC = () => {
       });
       navigate("/dashboard");
     } catch (error) {
-      toast({
-        title: "Registration failed",
-        description: error instanceof Error ? error.message : "An error occurred during registration",
-        variant: "destructive",
-      });
+      const errorMessage = error instanceof Error ? error.message : "An error occurred during registration";
+      
+      // If it's a mechanic pending approval message, give more information
+      if (errorMessage.includes("pending admin approval")) {
+        toast({
+          title: "Registration successful",
+          description: "Your mechanic account is pending admin approval. You'll be notified once approved.",
+        });
+        navigate("/login");
+      } else {
+        toast({
+          title: "Registration failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +117,14 @@ const RegisterForm: React.FC = () => {
           </div>
           <div className="space-y-2">
             <Label>Account Type</Label>
-            <RadioGroup value={role} onValueChange={(value) => setRole(value as UserRole)} defaultValue="customer">
+            <RadioGroup 
+              value={role} 
+              onValueChange={(value) => {
+                setRole(value as UserRole);
+                setShowMechanicInfo(value === "mechanic");
+              }} 
+              defaultValue="customer"
+            >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="customer" id="customer" />
                 <Label htmlFor="customer">Customer</Label>
@@ -114,6 +135,17 @@ const RegisterForm: React.FC = () => {
               </div>
             </RadioGroup>
           </div>
+          
+          {showMechanicInfo && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>Approval Required</AlertTitle>
+              <AlertDescription>
+                Mechanic accounts require admin approval before they can access the system.
+                You'll be notified once your account has been approved.
+              </AlertDescription>
+            </Alert>
+          )}
         </CardContent>
         <CardFooter>
           <Button type="submit" className="w-full bg-workshop-primary hover:bg-workshop-secondary" disabled={isLoading}>

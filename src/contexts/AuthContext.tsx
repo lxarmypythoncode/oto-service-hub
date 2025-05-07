@@ -2,12 +2,14 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 export type UserRole = "customer" | "mechanic" | "admin";
+export type MechanicApprovalStatus = "pending" | "approved" | "rejected";
 
 export interface User {
   id: string;
   name: string;
   email: string;
   role: UserRole;
+  approvalStatus?: MechanicApprovalStatus;
 }
 
 interface AuthContextType {
@@ -23,7 +25,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Mock user data for demo purposes
 const MOCK_USERS: User[] = [
   { id: "1", name: "Admin User", email: "admin@bengkel.com", role: "admin" },
-  { id: "2", name: "Mechanic User", email: "mechanic@bengkel.com", role: "mechanic" },
+  { id: "2", name: "Mechanic User", email: "mechanic@bengkel.com", role: "mechanic", approvalStatus: "approved" },
   { id: "3", name: "Customer User", email: "customer@bengkel.com", role: "customer" },
 ];
 
@@ -51,6 +53,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const foundUser = MOCK_USERS.find(u => u.email === email);
     if (foundUser) {
+      // Check if mechanic is approved
+      if (foundUser.role === "mechanic" && foundUser.approvalStatus !== "approved") {
+        throw new Error("Your account is pending admin approval. Please check back later.");
+      }
+      
       setUser(foundUser);
       localStorage.setItem("bengkelUser", JSON.stringify(foundUser));
     } else {
@@ -75,14 +82,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       name,
       email,
       role,
+      // Set approval status to pending for mechanics, undefined for others
+      ...(role === "mechanic" ? { approvalStatus: "pending" as MechanicApprovalStatus } : {})
     };
 
     // Update mock data (in a real app, this would be stored in the database)
     MOCK_USERS.push(newUser);
 
-    // Log in the new user
-    setUser(newUser);
-    localStorage.setItem("bengkelUser", JSON.stringify(newUser));
+    // If the user is a mechanic, they need approval first
+    if (role === "mechanic") {
+      setLoading(false);
+      throw new Error("Your mechanic account has been created and is pending admin approval. You will be notified when approved.");
+    } else {
+      // Log in the new user for customers
+      setUser(newUser);
+      localStorage.setItem("bengkelUser", JSON.stringify(newUser));
+    }
+    
     setLoading(false);
   };
 
