@@ -4,7 +4,7 @@ import { Navigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { UserNav } from "@/components/layout/UserNav";
-import { LayoutDashboard, Wrench, Car, UserCircle } from "lucide-react";
+import { Calendar, ClipboardList, LayoutDashboard, Wrench, Car, UserCircle, FileText } from "lucide-react";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -26,6 +26,87 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, requiredRole }) => {
   if (requiredRole && user.role !== requiredRole) {
     return <Navigate to="/dashboard" replace />;
   }
+
+  // Render role-specific mobile navigation
+  const renderMobileNav = () => {
+    if (user.role === "admin") {
+      return (
+        <div className="flex justify-between">
+          <Link to="/dashboard" className="flex flex-col items-center p-2">
+            <LayoutDashboard className={`h-5 w-5 ${location.pathname === '/dashboard' ? 'text-workshop-primary' : ''}`} />
+            <span className={`text-xs ${location.pathname === '/dashboard' ? 'text-workshop-primary' : ''}`}>Dashboard</span>
+          </Link>
+          <Link to="/customers" className="flex flex-col items-center p-2">
+            <UserCircle className={`h-5 w-5 ${location.pathname === '/customers' ? 'text-workshop-primary' : ''}`} />
+            <span className={`text-xs ${location.pathname === '/customers' ? 'text-workshop-primary' : ''}`}>Customers</span>
+          </Link>
+          <Link to="/mechanics" className="flex flex-col items-center p-2">
+            <Wrench className={`h-5 w-5 ${location.pathname === '/mechanics' ? 'text-workshop-primary' : ''}`} />
+            <span className={`text-xs ${location.pathname === '/mechanics' ? 'text-workshop-primary' : ''}`}>Mechanics</span>
+          </Link>
+          <Link to="/inventory" className="flex flex-col items-center p-2">
+            <ClipboardList className={`h-5 w-5 ${location.pathname === '/inventory' ? 'text-workshop-primary' : ''}`} />
+            <span className={`text-xs ${location.pathname === '/inventory' ? 'text-workshop-primary' : ''}`}>Inventory</span>
+          </Link>
+          <Link to="/settings" className="flex flex-col items-center p-2">
+            <LayoutDashboard className={`h-5 w-5 ${location.pathname === '/settings' ? 'text-workshop-primary' : ''}`} />
+            <span className={`text-xs ${location.pathname === '/settings' ? 'text-workshop-primary' : ''}`}>Settings</span>
+          </Link>
+        </div>
+      );
+    } else if (user.role === "mechanic") {
+      return (
+        <div className="flex justify-between">
+          <Link to="/dashboard" className="flex flex-col items-center p-2">
+            <LayoutDashboard className={`h-5 w-5 ${location.pathname === '/dashboard' ? 'text-workshop-primary' : ''}`} />
+            <span className={`text-xs ${location.pathname === '/dashboard' ? 'text-workshop-primary' : ''}`}>Dashboard</span>
+          </Link>
+          <Link to="/work-orders" className="flex flex-col items-center p-2">
+            <Wrench className={`h-5 w-5 ${location.pathname === '/work-orders' ? 'text-workshop-primary' : ''}`} />
+            <span className={`text-xs ${location.pathname === '/work-orders' ? 'text-workshop-primary' : ''}`}>Work</span>
+          </Link>
+          <Link to="/schedule" className="flex flex-col items-center p-2">
+            <Calendar className={`h-5 w-5 ${location.pathname === '/schedule' ? 'text-workshop-primary' : ''}`} />
+            <span className={`text-xs ${location.pathname === '/schedule' ? 'text-workshop-primary' : ''}`}>Schedule</span>
+          </Link>
+          <Link to="/inventory" className="flex flex-col items-center p-2">
+            <ClipboardList className={`h-5 w-5 ${location.pathname === '/inventory' ? 'text-workshop-primary' : ''}`} />
+            <span className={`text-xs ${location.pathname === '/inventory' ? 'text-workshop-primary' : ''}`}>Inventory</span>
+          </Link>
+          <Link to="/profile" className="flex flex-col items-center p-2">
+            <UserCircle className={`h-5 w-5 ${location.pathname === '/profile' ? 'text-workshop-primary' : ''}`} />
+            <span className={`text-xs ${location.pathname === '/profile' ? 'text-workshop-primary' : ''}`}>Profile</span>
+          </Link>
+        </div>
+      );
+    } else {
+      // Default customer navigation
+      return (
+        <div className="flex justify-between">
+          <Link to="/dashboard" className="flex flex-col items-center p-2">
+            <LayoutDashboard className={`h-5 w-5 ${location.pathname === '/dashboard' ? 'text-workshop-primary' : ''}`} />
+            <span className={`text-xs ${location.pathname === '/dashboard' ? 'text-workshop-primary' : ''}`}>Dashboard</span>
+          </Link>
+          <Link to="/my-vehicles" className="flex flex-col items-center p-2">
+            <Car className={`h-5 w-5 ${location.pathname === '/my-vehicles' ? 'text-workshop-primary' : ''}`} />
+            <span className={`text-xs ${location.pathname === '/my-vehicles' ? 'text-workshop-primary' : ''}`}>Vehicles</span>
+          </Link>
+          <Link to="/book-service" className="flex flex-col items-center p-2">
+            <Wrench className={`h-5 w-5 ${location.pathname === '/book-service' ? 'text-workshop-primary' : ''}`} />
+            <span className={`text-xs ${location.pathname === '/book-service' ? 'text-workshop-primary' : ''}`}>Book</span>
+          </Link>
+          <Link to="/service-history" className="flex flex-col items-center p-2">
+            <FileText className={`h-5 w-5 ${location.pathname === '/service-history' ? 'text-workshop-primary' : ''}`} />
+            <span className={`text-xs ${location.pathname === '/service-history' ? 'text-workshop-primary' : ''}`}>History</span>
+          </Link>
+          <Link to="/profile" className="flex flex-col items-center p-2">
+            <UserCircle className={`h-5 w-5 ${location.pathname === '/profile' ? 'text-workshop-primary' : ''}`} />
+            <span className={`text-xs ${location.pathname === '/profile' ? 'text-workshop-primary' : ''}`}>Profile</span>
+          </Link>
+        </div>
+      );
+    }
+  };
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -49,28 +130,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, requiredRole }) => {
         
         {/* Mobile bottom navigation */}
         <div className="md:hidden border-t bg-background p-2">
-          <div className="flex justify-between">
-            <Link to="/dashboard" className="flex flex-col items-center p-2">
-              <LayoutDashboard className={`h-5 w-5 ${location.pathname === '/dashboard' ? 'text-workshop-primary' : ''}`} />
-              <span className={`text-xs ${location.pathname === '/dashboard' ? 'text-workshop-primary' : ''}`}>Dashboard</span>
-            </Link>
-            <Link to="/my-vehicles" className="flex flex-col items-center p-2">
-              <Car className={`h-5 w-5 ${location.pathname === '/my-vehicles' ? 'text-workshop-primary' : ''}`} />
-              <span className={`text-xs ${location.pathname === '/my-vehicles' ? 'text-workshop-primary' : ''}`}>Vehicles</span>
-            </Link>
-            <Link to="/book-service" className="flex flex-col items-center p-2">
-              <Wrench className={`h-5 w-5 ${location.pathname === '/book-service' ? 'text-workshop-primary' : ''}`} />
-              <span className={`text-xs ${location.pathname === '/book-service' ? 'text-workshop-primary' : ''}`}>Book</span>
-            </Link>
-            <Link to="/service-history" className="flex flex-col items-center p-2">
-              <LayoutDashboard className={`h-5 w-5 ${location.pathname === '/service-history' ? 'text-workshop-primary' : ''}`} />
-              <span className={`text-xs ${location.pathname === '/service-history' ? 'text-workshop-primary' : ''}`}>History</span>
-            </Link>
-            <Link to="/profile" className="flex flex-col items-center p-2">
-              <UserCircle className={`h-5 w-5 ${location.pathname === '/profile' ? 'text-workshop-primary' : ''}`} />
-              <span className={`text-xs ${location.pathname === '/profile' ? 'text-workshop-primary' : ''}`}>Profile</span>
-            </Link>
-          </div>
+          {renderMobileNav()}
         </div>
       </div>
     </div>

@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,7 @@ export function Sidebar() {
         { href: "/work-orders", icon: Wrench, title: "Work Orders" },
         { href: "/schedule", icon: Calendar, title: "Schedule" },
         { href: "/inventory", icon: ClipboardList, title: "Inventory" },
+        { href: "/profile", icon: UserCircle, title: "Profile" },
       ];
     } else {
       // Customer links

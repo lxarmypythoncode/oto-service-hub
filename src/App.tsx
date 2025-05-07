@@ -15,6 +15,9 @@ import MyVehicles from "./pages/MyVehicles";
 import ServiceHistory from "./pages/ServiceHistory";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import WorkOrders from "./pages/WorkOrders";
+import Schedule from "./pages/Schedule";
+import Inventory from "./pages/Inventory";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +37,9 @@ const App = () => (
             <Route path="/my-vehicles" element={<MyVehicles />} />
             <Route path="/service-history" element={<ServiceHistory />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/work-orders" element={<WorkOrders />} />
+            <Route path="/schedule" element={<Schedule />} />
+            <Route path="/inventory" element={<Inventory />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
