@@ -1,73 +1,105 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { FileText, ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { db, ServiceOrder, Vehicle, Service, Part, ServicePart } from "@/utils/db";
+
+interface ExtendedServiceOrder extends ServiceOrder {
+  vehicle: {
+    id: number;
+    name: string;
+  };
+  serviceType: string;
+  mechanic: string;
+  cost: string;
+  parts: {
+    name: string;
+    quantity: number;
+    price: string;
+  }[];
+}
 
 const ServiceHistoryList: React.FC = () => {
-  const [expandedService, setExpandedService] = useState<string | null>(null);
+  const [expandedService, setExpandedService] = useState<number | null>(null);
   const [vehicleFilter, setVehicleFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [serviceHistory, setServiceHistory] = useState<ExtendedServiceOrder[]>([]);
+  const [userVehicles, setUserVehicles] = useState<Vehicle[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock service history data
-  const serviceHistory = [
-    {
-      id: "1",
-      vehicle: {
-        id: "1",
-        name: "Toyota Avanza (B 1234 XYZ)"
-      },
-      serviceType: "Regular Maintenance",
-      date: "2023-12-15",
-      cost: "Rp 850,000",
-      status: "completed",
-      mechanic: "Budi Satria",
-      description: "Oil change, filter replacement, and general inspection.",
-      parts: [
-        { name: "Engine Oil", quantity: 4, price: "Rp 300,000" },
-        { name: "Oil Filter", quantity: 1, price: "Rp 150,000" },
-        { name: "Air Filter", quantity: 1, price: "Rp 200,000" }
-      ]
-    },
-    {
-      id: "2",
-      vehicle: {
-        id: "1",
-        name: "Toyota Avanza (B 1234 XYZ)"
-      },
-      serviceType: "Brake Repair",
-      date: "2023-09-05",
-      cost: "Rp 1,200,000",
-      status: "completed",
-      mechanic: "Agus Prakoso",
-      description: "Front brake pad replacement and brake fluid flush.",
-      parts: [
-        { name: "Brake Pads (Front)", quantity: 1, price: "Rp 600,000" },
-        { name: "Brake Fluid", quantity: 1, price: "Rp 250,000" }
-      ]
-    },
-    {
-      id: "3",
-      vehicle: {
-        id: "2",
-        name: "Honda Jazz (B 5678 ABC)"
-      },
-      serviceType: "Battery Replacement",
-      date: "2024-01-20",
-      cost: "Rp 950,000",
-      status: "completed",
-      mechanic: "Budi Satria",
-      description: "Replacement of battery that was no longer holding charge.",
-      parts: [
-        { name: "Battery", quantity: 1, price: "Rp 800,000" }
-      ]
-    }
-  ];
+  useEffect(() => {
+    const fetchServiceHistory = async () => {
+      setLoading(true);
+      try {
+        // In a real app, you would get the current user's ID from authentication
+        const userId = 6; // Mock user ID
+        
+        // Get user's service orders
+        const orders = await db.getServiceOrdersByCustomer(userId);
+        const vehicles = await db.getVehiclesByOwner(userId);
+        setUserVehicles(vehicles);
+        
+        // Get all services to map service types
+        const allServices = await db.getServices();
+        const serviceMap: Record<number, Service> = {};
+        allServices.forEach(service => {
+          serviceMap[service.service_id] = service;
+        });
+        
+        // Fetch parts for each order
+        const extendedOrders: ExtendedServiceOrder[] = await Promise.all(
+          orders.map(async (order) => {
+            const vehicle = vehicles.find(v => v.vehicle_id === order.vehicle_id);
+            
+            // Get parts used in this service
+            const orderParts = await db.getServicePartsByOrder(order.order_id);
+            const partsDetails: {name: string; quantity: number; price: string}[] = [];
+            
+            for (const servicePart of orderParts) {
+              const part = await db.getPartById(servicePart.part_id);
+              if (part) {
+                partsDetails.push({
+                  name: part.name,
+                  quantity: servicePart.quantity,
+                  price: `Rp ${servicePart.unit_price.toLocaleString()}`
+                });
+              }
+            }
+            
+            // Calculate total cost from parts if not provided
+            const totalCost = order.total_cost || 
+              orderParts.reduce((sum, part) => sum + (part.unit_price * part.quantity), 0);
+            
+            return {
+              ...order,
+              vehicle: {
+                id: vehicle?.vehicle_id || 0,
+                name: vehicle ? `${vehicle.make} ${vehicle.model} (${vehicle.license_plate})` : "Unknown Vehicle"
+              },
+              serviceType: "Service Order", // Default service type if none specified
+              mechanic: "Workshop Technician", // Default mechanic name if none specified
+              cost: `Rp ${totalCost.toLocaleString()}`,
+              parts: partsDetails
+            };
+          })
+        );
+        
+        setServiceHistory(extendedOrders);
+      } catch (error) {
+        console.error("Error fetching service history:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const toggleServiceDetails = (serviceId: string) => {
+    fetchServiceHistory();
+  }, []);
+
+  const toggleServiceDetails = (serviceId: number) => {
     if (expandedService === serviceId) {
       setExpandedService(null);
     } else {
@@ -77,25 +109,30 @@ const ServiceHistoryList: React.FC = () => {
 
   const filteredServices = serviceHistory.filter((service) => {
     // Filter by vehicle
-    const vehicleMatch = vehicleFilter === "all" || service.vehicle.id === vehicleFilter;
+    const vehicleMatch = vehicleFilter === "all" || service.vehicle.id.toString() === vehicleFilter;
     
     // Filter by search query
     const searchMatch = 
       service.serviceType.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      service.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (service.notes || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       service.mechanic.toLowerCase().includes(searchQuery.toLowerCase());
     
     return vehicleMatch && searchMatch;
   });
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: ServiceOrder['status']) => {
     switch(status) {
       case "completed": return "bg-green-100 text-green-800";
-      case "in-progress": return "bg-blue-100 text-blue-800";
-      case "scheduled": return "bg-orange-100 text-orange-800";
+      case "in_progress": return "bg-blue-100 text-blue-800";
+      case "pending": return "bg-orange-100 text-orange-800";
+      case "cancelled": return "bg-gray-100 text-gray-800";
       default: return "bg-gray-100 text-gray-800";
     }
   };
+  
+  if (loading) {
+    return <CardContent className="text-center py-6">Loading service history...</CardContent>;
+  }
 
   return (
     <CardContent>
@@ -107,8 +144,11 @@ const ServiceHistoryList: React.FC = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Vehicles</SelectItem>
-              <SelectItem value="1">Toyota Avanza</SelectItem>
-              <SelectItem value="2">Honda Jazz</SelectItem>
+              {userVehicles.map(vehicle => (
+                <SelectItem key={vehicle.vehicle_id} value={vehicle.vehicle_id.toString()}>
+                  {vehicle.make} {vehicle.model}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -132,24 +172,26 @@ const ServiceHistoryList: React.FC = () => {
           </div>
         ) : (
           filteredServices.map((service) => (
-            <div key={service.id} className="border rounded-lg overflow-hidden">
+            <div key={service.order_id} className="border rounded-lg overflow-hidden">
               <div 
                 className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 cursor-pointer hover:bg-muted/50"
-                onClick={() => toggleServiceDetails(service.id)}
+                onClick={() => toggleServiceDetails(service.order_id)}
               >
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-medium">{service.serviceType}</h3>
                     <Badge className={getStatusColor(service.status)}>
-                      {service.status === "completed" ? "Completed" : service.status}
+                      {service.status === "completed" ? "Completed" : 
+                       service.status === "in_progress" ? "In Progress" : 
+                       service.status === "pending" ? "Pending" : "Cancelled"}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">{service.vehicle.name}</p>
-                  <p className="text-sm text-muted-foreground">Date: {new Date(service.date).toLocaleDateString()}</p>
+                  <p className="text-sm text-muted-foreground">Date: {new Date(service.service_date).toLocaleDateString()}</p>
                 </div>
                 <div className="flex items-center gap-2 mt-2 md:mt-0">
                   <span className="font-medium">{service.cost}</span>
-                  {expandedService === service.id ? (
+                  {expandedService === service.order_id ? (
                     <ChevronUp className="h-5 w-5 text-muted-foreground" />
                   ) : (
                     <ChevronDown className="h-5 w-5 text-muted-foreground" />
@@ -157,12 +199,12 @@ const ServiceHistoryList: React.FC = () => {
                 </div>
               </div>
               
-              {expandedService === service.id && (
+              {expandedService === service.order_id && (
                 <div className="p-4 bg-muted/30 border-t">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                       <p className="text-sm font-medium">Service Details</p>
-                      <p className="text-sm text-muted-foreground">{service.description}</p>
+                      <p className="text-sm text-muted-foreground">{service.notes || "No details provided."}</p>
                     </div>
                     <div>
                       <p className="text-sm font-medium">Mechanic</p>
@@ -182,13 +224,21 @@ const ServiceHistoryList: React.FC = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {service.parts.map((part, index) => (
-                            <tr key={index} className="border-b last:border-0">
-                              <td className="py-2">{part.name}</td>
-                              <td className="text-center py-2">{part.quantity}</td>
-                              <td className="text-right py-2">{part.price}</td>
+                          {service.parts.length > 0 ? (
+                            service.parts.map((part, index) => (
+                              <tr key={index} className="border-b last:border-0">
+                                <td className="py-2">{part.name}</td>
+                                <td className="text-center py-2">{part.quantity}</td>
+                                <td className="text-right py-2">{part.price}</td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={3} className="py-4 text-center text-muted-foreground">
+                                No parts data available
+                              </td>
                             </tr>
-                          ))}
+                          )}
                         </tbody>
                       </table>
                     </div>

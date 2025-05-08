@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Table,
@@ -36,68 +36,92 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { db, ServiceOrder, User, Vehicle } from "@/utils/db";
 
-type WorkOrderStatus = "pending" | "in_progress" | "completed" | "cancelled";
-
-interface WorkOrder {
-  id: string;
+interface WorkOrderWithDetails extends ServiceOrder {
   vehicleInfo: string;
   customerName: string;
   serviceType: string;
-  scheduledDate: string;
-  status: WorkOrderStatus;
-  notes: string;
 }
-
-const mockWorkOrders: WorkOrder[] = [
-  {
-    id: "WO-001",
-    vehicleInfo: "Toyota Camry 2020",
-    customerName: "John Smith",
-    serviceType: "Oil Change",
-    scheduledDate: "2023-06-15",
-    status: "pending",
-    notes: "Customer reports engine noise",
-  },
-  {
-    id: "WO-002",
-    vehicleInfo: "Honda Civic 2019",
-    customerName: "Alice Johnson",
-    serviceType: "Brake Replacement",
-    scheduledDate: "2023-06-16",
-    status: "in_progress",
-    notes: "Front brakes only",
-  },
-  {
-    id: "WO-003",
-    vehicleInfo: "Ford F-150 2021",
-    customerName: "Robert Davis",
-    serviceType: "Full Service",
-    scheduledDate: "2023-06-17",
-    status: "completed",
-    notes: "Annual maintenance",
-  },
-  {
-    id: "WO-004",
-    vehicleInfo: "Chevrolet Malibu 2018",
-    customerName: "Emma Wilson",
-    serviceType: "A/C Repair",
-    scheduledDate: "2023-06-18",
-    status: "cancelled",
-    notes: "Customer rescheduled",
-  },
-];
 
 const WorkOrdersList: React.FC = () => {
   const { toast } = useToast();
-  const [workOrders, setWorkOrders] = useState<WorkOrder[]>(mockWorkOrders);
+  const [workOrders, setWorkOrders] = useState<WorkOrderWithDetails[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const filteredOrders = filterStatus === "all"
-    ? workOrders
-    : workOrders.filter(order => order.status === filterStatus);
+  useEffect(() => {
+    const fetchWorkOrders = async () => {
+      setLoading(true);
+      try {
+        // In a real app, you would get the current mechanic's ID from authentication
+        const mechanicId = 2; // Mock mechanic ID
+        
+        // Get service orders assigned to this mechanic
+        const orders = await db.getServiceOrdersByMechanic(mechanicId);
+        
+        // Get customers and vehicles for these orders
+        const customerIds = orders.map(order => order.customer_id);
+        const vehicleIds = orders.map(order => order.vehicle_id);
+        
+        // Fetch all unique customers and vehicles at once
+        const customers = await db.getUsers();
+        const customersMap: Record<number, User> = {};
+        customers.forEach(customer => {
+          customersMap[customer.user_id] = customer;
+        });
+        
+        const vehicles = await db.getVehicles();
+        const vehiclesMap: Record<number, Vehicle> = {};
+        vehicles.forEach(vehicle => {
+          vehiclesMap[vehicle.vehicle_id] = vehicle;
+        });
+        
+        // Create extended work orders with full details
+        const extendedOrders: WorkOrderWithDetails[] = orders.map(order => {
+          const customer = customersMap[order.customer_id];
+          const vehicle = vehiclesMap[order.vehicle_id];
+          
+          return {
+            ...order,
+            vehicleInfo: vehicle ? `${vehicle.make} ${vehicle.model} ${vehicle.year}` : "Unknown Vehicle",
+            customerName: customer ? customer.name : "Unknown Customer",
+            serviceType: order.notes?.split(',')[0] || "General Service", // Use first part of notes as service type
+          };
+        });
+        
+        setWorkOrders(extendedOrders);
+      } catch (error) {
+        console.error("Error fetching work orders:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load work orders",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const getStatusBadge = (status: WorkOrderStatus) => {
+    fetchWorkOrders();
+  }, [toast]);
+
+  const filteredOrders = workOrders.filter(order => {
+    // Apply status filter
+    const statusMatch = filterStatus === "all" || order.status === filterStatus;
+    
+    // Apply search filter
+    const searchMatch = 
+      searchTerm === "" || 
+      order.vehicleInfo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.serviceType.toLowerCase().includes(searchTerm.toLowerCase());
+      
+    return statusMatch && searchMatch;
+  });
+
+  const getStatusBadge = (status: ServiceOrder['status']) => {
     switch (status) {
       case "pending":
         return <Badge variant="outline" className="bg-yellow-100 text-yellow-800">Pending</Badge>;
@@ -112,25 +136,46 @@ const WorkOrdersList: React.FC = () => {
     }
   };
 
-  const updateStatus = (orderId: string, newStatus: WorkOrderStatus) => {
-    setWorkOrders(orders => 
-      orders.map(order => 
-        order.id === orderId ? { ...order, status: newStatus } : order
-      )
-    );
-    
-    toast({
-      title: "Work Order Updated",
-      description: `Order ${orderId} status changed to ${newStatus}`,
-    });
+  const updateStatus = async (orderId: number, newStatus: ServiceOrder['status']) => {
+    try {
+      const success = await db.updateServiceOrderStatus(orderId, newStatus);
+      
+      if (success) {
+        setWorkOrders(orders => 
+          orders.map(order => 
+            order.order_id === orderId ? { ...order, status: newStatus } : order
+          )
+        );
+        
+        toast({
+          title: "Work Order Updated",
+          description: `Order ${orderId} status changed to ${newStatus.replace('_', ' ')}`,
+        });
+      } else {
+        throw new Error("Failed to update status");
+      }
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update order status",
+        variant: "destructive",
+      });
+    }
   };
+  
+  if (loading) {
+    return <div className="p-6 text-center">Loading work orders...</div>;
+  }
 
   return (
     <div className="p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <Input 
           placeholder="Search work orders..." 
-          className="max-w-xs" 
+          className="max-w-xs"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
         />
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="w-[180px]">
@@ -168,19 +213,19 @@ const WorkOrdersList: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {filteredOrders.filter(order => order.status !== "completed" && order.status !== "cancelled").map(order => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-medium">{order.id}</TableCell>
+                  <TableRow key={order.order_id}>
+                    <TableCell className="font-medium">WO-{order.order_id.toString().padStart(3, '0')}</TableCell>
                     <TableCell>{order.vehicleInfo}</TableCell>
                     <TableCell>{order.customerName}</TableCell>
                     <TableCell>{order.serviceType}</TableCell>
-                    <TableCell>{order.scheduledDate}</TableCell>
+                    <TableCell>{new Date(order.service_date).toLocaleDateString()}</TableCell>
                     <TableCell>{getStatusBadge(order.status)}</TableCell>
                     <TableCell className="text-right">
                       {order.status === "pending" && (
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => updateStatus(order.id, "in_progress")}
+                          onClick={() => updateStatus(order.order_id, "in_progress")}
                         >
                           Start Work
                         </Button>
@@ -199,7 +244,7 @@ const WorkOrdersList: React.FC = () => {
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => updateStatus(order.id, "completed")}>
+                              <AlertDialogAction onClick={() => updateStatus(order.order_id, "completed")}>
                                 Complete
                               </AlertDialogAction>
                             </AlertDialogFooter>
@@ -230,12 +275,12 @@ const WorkOrdersList: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {filteredOrders.filter(order => order.status === "completed" || order.status === "cancelled").map(order => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-medium">{order.id}</TableCell>
+                  <TableRow key={order.order_id}>
+                    <TableCell className="font-medium">WO-{order.order_id.toString().padStart(3, '0')}</TableCell>
                     <TableCell>{order.vehicleInfo}</TableCell>
                     <TableCell>{order.customerName}</TableCell>
                     <TableCell>{order.serviceType}</TableCell>
-                    <TableCell>{order.scheduledDate}</TableCell>
+                    <TableCell>{new Date(order.service_date).toLocaleDateString()}</TableCell>
                     <TableCell>{getStatusBadge(order.status)}</TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm">

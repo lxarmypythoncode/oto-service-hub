@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -20,166 +20,61 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { db, User, Vehicle } from "@/utils/db";
 
-interface Customer {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  joinDate: string;
+interface CustomerWithVehicleCount extends User {
   vehicleCount: number;
-  status: "active" | "inactive";
 }
-
-// Mock data
-const mockCustomers: Customer[] = [
-  {
-    id: "C001",
-    name: "James Wilson",
-    email: "james.wilson@example.com",
-    phone: "+1 555-123-4567",
-    joinDate: "2023-01-20",
-    vehicleCount: 2,
-    status: "active",
-  },
-  {
-    id: "C002",
-    name: "Emma Thomas",
-    email: "emma.thomas@example.com",
-    phone: "+1 555-987-6543",
-    joinDate: "2023-02-15",
-    vehicleCount: 1,
-    status: "active",
-  },
-  {
-    id: "C003",
-    name: "Robert Garcia",
-    email: "robert.garcia@example.com",
-    phone: "+1 555-456-7890",
-    joinDate: "2023-03-05",
-    vehicleCount: 3,
-    status: "active",
-  },
-  {
-    id: "C004",
-    name: "Sophia Lee",
-    email: "sophia.lee@example.com",
-    phone: "+1 555-789-0123",
-    joinDate: "2023-04-10",
-    vehicleCount: 1,
-    status: "inactive",
-  },
-  {
-    id: "C005",
-    name: "William Johnson",
-    email: "william.johnson@example.com",
-    phone: "+1 555-234-5678",
-    joinDate: "2023-05-22",
-    vehicleCount: 2,
-    status: "active",
-  },
-];
-
-interface CustomerVehicle {
-  id: string;
-  make: string;
-  model: string;
-  year: number;
-  licensePlate: string;
-  lastService: string;
-}
-
-// Mock vehicle data
-const mockVehicles: Record<string, CustomerVehicle[]> = {
-  "C001": [
-    {
-      id: "V001",
-      make: "Toyota",
-      model: "Camry",
-      year: 2020,
-      licensePlate: "ABC123",
-      lastService: "2023-05-15",
-    },
-    {
-      id: "V002",
-      make: "Honda",
-      model: "CR-V",
-      year: 2019,
-      licensePlate: "XYZ789",
-      lastService: "2023-04-20",
-    },
-  ],
-  "C002": [
-    {
-      id: "V003",
-      make: "Ford",
-      model: "Focus",
-      year: 2021,
-      licensePlate: "DEF456",
-      lastService: "2023-06-10",
-    },
-  ],
-  "C003": [
-    {
-      id: "V004",
-      make: "Chevrolet",
-      model: "Malibu",
-      year: 2018,
-      licensePlate: "GHI789",
-      lastService: "2023-03-25",
-    },
-    {
-      id: "V005",
-      make: "Nissan",
-      model: "Altima",
-      year: 2022,
-      licensePlate: "JKL012",
-      lastService: "2023-07-05",
-    },
-    {
-      id: "V006",
-      make: "Mazda",
-      model: "CX-5",
-      year: 2020,
-      licensePlate: "MNO345",
-      lastService: "2023-02-28",
-    },
-  ],
-  "C004": [
-    {
-      id: "V007",
-      make: "Hyundai",
-      model: "Tucson",
-      year: 2021,
-      licensePlate: "PQR678",
-      lastService: "2023-05-30",
-    },
-  ],
-  "C005": [
-    {
-      id: "V008",
-      make: "Kia",
-      model: "Sportage",
-      year: 2019,
-      licensePlate: "STU901",
-      lastService: "2023-04-15",
-    },
-    {
-      id: "V009",
-      make: "Subaru",
-      model: "Outback",
-      year: 2022,
-      licensePlate: "VWX234",
-      lastService: "2023-06-22",
-    },
-  ],
-};
 
 const CustomersManagement: React.FC = () => {
-  const [customers, setCustomers] = useState<Customer[]>(mockCustomers);
+  const [customers, setCustomers] = useState<CustomerWithVehicleCount[]>([]);
+  const [vehicles, setVehicles] = useState<Record<number, Vehicle[]>>({});
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<number | null>(null);
   const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      setLoading(true);
+      try {
+        // Get customers from the database
+        const customersList = await db.getUsersByRole('customer');
+        const allVehicles = await db.getVehicles();
+        
+        // Count vehicles for each customer
+        const customersWithCount = await Promise.all(
+          customersList.map(async (customer) => {
+            const custVehicles = allVehicles.filter(v => v.owner_id === customer.user_id);
+            
+            // Store vehicles for this customer
+            setVehicles(prev => ({
+              ...prev,
+              [customer.user_id]: custVehicles
+            }));
+            
+            return {
+              ...customer,
+              vehicleCount: custVehicles.length
+            };
+          })
+        );
+        
+        setCustomers(customersWithCount);
+      } catch (error) {
+        console.error("Error fetching customers:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load customers data",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCustomers();
+  }, [toast]);
 
   const filteredCustomers = customers.filter(
     (customer) =>
@@ -187,34 +82,55 @@ const CustomersManagement: React.FC = () => {
       customer.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getStatusBadge = (status: "active" | "inactive") => {
-    return status === "active" ? (
+  const getStatusBadge = (isApproved: boolean) => {
+    return isApproved ? (
       <Badge className="bg-green-100 text-green-800">Active</Badge>
     ) : (
       <Badge className="bg-gray-100 text-gray-800">Inactive</Badge>
     );
   };
 
-  const toggleCustomerStatus = (id: string) => {
-    setCustomers((prevCustomers) =>
-      prevCustomers.map((customer) =>
-        customer.id === id
-          ? {
-              ...customer,
-              status: customer.status === "active" ? "inactive" : "active",
-            }
-          : customer
-      )
-    );
+  const toggleCustomerStatus = async (id: number) => {
+    const customer = customers.find(c => c.user_id === id);
+    if (!customer) return;
     
-    const customer = customers.find(c => c.id === id);
-    const newStatus = customer?.status === "active" ? "inactive" : "active";
+    const newStatus = !customer.is_approved;
     
-    toast({
-      title: "Status Updated",
-      description: `Customer's status has been changed to ${newStatus}`,
-    });
+    try {
+      const success = await db.updateUserStatus(id, newStatus);
+      
+      if (success) {
+        setCustomers(prevCustomers =>
+          prevCustomers.map(customer =>
+            customer.user_id === id
+              ? {
+                  ...customer,
+                  is_approved: newStatus,
+                }
+              : customer
+          )
+        );
+        
+        toast({
+          title: "Status Updated",
+          description: `Customer's status has been changed to ${newStatus ? 'active' : 'inactive'}`,
+        });
+      } else {
+        throw new Error("Failed to update status");
+      }
+    } catch (error) {
+      console.error("Error updating customer status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update customer status",
+        variant: "destructive",
+      });
+    }
   };
+
+  if (loading) {
+    return <div className="p-6 text-center">Loading customers data...</div>;
+  }
 
   return (
     <div className="p-6">
@@ -243,14 +159,14 @@ const CustomersManagement: React.FC = () => {
           </TableHeader>
           <TableBody>
             {filteredCustomers.map((customer) => (
-              <TableRow key={customer.id}>
-                <TableCell className="font-medium">{customer.id}</TableCell>
+              <TableRow key={customer.user_id}>
+                <TableCell className="font-medium">C{customer.user_id.toString().padStart(3, '0')}</TableCell>
                 <TableCell>{customer.name}</TableCell>
                 <TableCell>{customer.email}</TableCell>
-                <TableCell>{customer.phone}</TableCell>
-                <TableCell>{customer.joinDate}</TableCell>
+                <TableCell>{customer.phone || "—"}</TableCell>
+                <TableCell>{new Date(customer.created_at).toLocaleDateString()}</TableCell>
                 <TableCell>{customer.vehicleCount}</TableCell>
-                <TableCell>{getStatusBadge(customer.status)}</TableCell>
+                <TableCell>{getStatusBadge(customer.is_approved)}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end space-x-2">
                     <Dialog>
@@ -258,7 +174,7 @@ const CustomersManagement: React.FC = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setSelectedCustomer(customer.id)}
+                          onClick={() => setSelectedCustomer(customer.user_id)}
                         >
                           View Vehicles
                         </Button>
@@ -267,10 +183,10 @@ const CustomersManagement: React.FC = () => {
                         <DialogHeader>
                           <DialogTitle>Customer Vehicles</DialogTitle>
                           <DialogDescription>
-                            Vehicles owned by {customers.find(c => c.id === selectedCustomer)?.name}
+                            Vehicles owned by {customers.find(c => c.user_id === selectedCustomer)?.name}
                           </DialogDescription>
                         </DialogHeader>
-                        {selectedCustomer && (
+                        {selectedCustomer && vehicles[selectedCustomer] && (
                           <div className="mt-4">
                             <Table>
                               <TableHeader>
@@ -284,14 +200,14 @@ const CustomersManagement: React.FC = () => {
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {mockVehicles[selectedCustomer]?.map((vehicle) => (
-                                  <TableRow key={vehicle.id}>
-                                    <TableCell>{vehicle.id}</TableCell>
+                                {vehicles[selectedCustomer]?.map((vehicle) => (
+                                  <TableRow key={vehicle.vehicle_id}>
+                                    <TableCell>V{vehicle.vehicle_id.toString().padStart(3, '0')}</TableCell>
                                     <TableCell>{vehicle.make}</TableCell>
                                     <TableCell>{vehicle.model}</TableCell>
                                     <TableCell>{vehicle.year}</TableCell>
-                                    <TableCell>{vehicle.licensePlate}</TableCell>
-                                    <TableCell>{vehicle.lastService}</TableCell>
+                                    <TableCell>{vehicle.license_plate}</TableCell>
+                                    <TableCell>{vehicle.last_service_date ? new Date(vehicle.last_service_date).toLocaleDateString() : "—"}</TableCell>
                                   </TableRow>
                                 ))}
                               </TableBody>
@@ -303,9 +219,9 @@ const CustomersManagement: React.FC = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => toggleCustomerStatus(customer.id)}
+                      onClick={() => toggleCustomerStatus(customer.user_id)}
                     >
-                      {customer.status === "active" ? "Deactivate" : "Activate"}
+                      {customer.is_approved ? "Deactivate" : "Activate"}
                     </Button>
                   </div>
                 </TableCell>

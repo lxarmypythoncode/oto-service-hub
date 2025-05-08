@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { CalendarIcon, Upload, MessageSquare, AlertCircle } from "lucide-react";
+import { db, Vehicle, Service } from "@/utils/db";
 
 const BookServiceForm: React.FC = () => {
   const [vehicle, setVehicle] = useState("");
@@ -36,9 +38,41 @@ const BookServiceForm: React.FC = () => {
       timestamp: new Date(Date.now() - 1000 * 60 * 5), // 5 minutes ago
     }
   ]);
+  const [userVehicles, setUserVehicles] = useState<Vehicle[]>([]);
+  const [availableServices, setAvailableServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
   
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // In a real app, you would get the current user's ID from authentication
+        const userId = 6; // Mock user ID
+        
+        // Fetch user's vehicles
+        const vehicles = await db.getVehiclesByOwner(userId);
+        setUserVehicles(vehicles);
+        
+        // Fetch available services
+        const services = await db.getServices();
+        setAvailableServices(services);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load data for booking form",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [toast]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -70,6 +104,9 @@ const BookServiceForm: React.FC = () => {
     
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // In a real app, you would store the service order in the database
+    // await db.createServiceOrder({...})
     
     toast({
       title: "Service booked successfully",
@@ -110,6 +147,10 @@ const BookServiceForm: React.FC = () => {
     }, 1000);
   };
 
+  if (loading) {
+    return <div className="text-center py-6">Loading booking form...</div>;
+  }
+
   return (
     <div className="relative">
       <form onSubmit={handleSubmit}>
@@ -121,8 +162,11 @@ const BookServiceForm: React.FC = () => {
                 <SelectValue placeholder="Select your vehicle" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="toyota-avanza">Toyota Avanza (B 1234 XYZ)</SelectItem>
-                <SelectItem value="honda-jazz">Honda Jazz (B 5678 ABC)</SelectItem>
+                {userVehicles.map((v) => (
+                  <SelectItem key={v.vehicle_id} value={v.vehicle_id.toString()}>
+                    {v.make} {v.model} ({v.license_plate})
+                  </SelectItem>
+                ))}
                 <SelectItem value="add-new">+ Add new vehicle</SelectItem>
               </SelectContent>
             </Select>
@@ -135,11 +179,11 @@ const BookServiceForm: React.FC = () => {
                 <SelectValue placeholder="Select service type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="oil-change">Oil Change & Filter</SelectItem>
-                <SelectItem value="brake-service">Brake Service</SelectItem>
-                <SelectItem value="tune-up">Tune Up</SelectItem>
-                <SelectItem value="ac-service">Air Conditioning Service</SelectItem>
-                <SelectItem value="tire-service">Tire Service</SelectItem>
+                {availableServices.map((service) => (
+                  <SelectItem key={service.service_id} value={service.service_id.toString()}>
+                    {service.name} (Rp {service.base_price.toLocaleString()})
+                  </SelectItem>
+                ))}
                 <SelectItem value="other">Other (Describe below)</SelectItem>
               </SelectContent>
             </Select>

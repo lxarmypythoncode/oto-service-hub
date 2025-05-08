@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -24,73 +24,18 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { db, User } from "@/utils/db";
 
-type MechanicStatus = "pending" | "approved" | "rejected";
-
-interface Mechanic {
-  id: string;
-  name: string;
-  email: string;
-  specialization: string;
-  experience: string;
-  joinDate: string;
-  status: MechanicStatus;
+interface MechanicWithDetails extends User {
+  specialization?: string;
+  experience?: string;
 }
 
-// Mock data
-const mockMechanics: Mechanic[] = [
-  {
-    id: "M001",
-    name: "John Smith",
-    email: "john.smith@example.com",
-    specialization: "Engine Repair",
-    experience: "5 years",
-    joinDate: "2023-01-15",
-    status: "approved",
-  },
-  {
-    id: "M002",
-    name: "Sarah Johnson",
-    email: "sarah.johnson@example.com",
-    specialization: "Electrical Systems",
-    experience: "3 years",
-    joinDate: "2023-03-10",
-    status: "approved",
-  },
-  {
-    id: "M003",
-    name: "Mike Wilson",
-    email: "mike.wilson@example.com",
-    specialization: "Transmission",
-    experience: "7 years",
-    joinDate: "2023-05-22",
-    status: "pending",
-  },
-  {
-    id: "M004",
-    name: "Lisa Brown",
-    email: "lisa.brown@example.com",
-    specialization: "Brake Systems",
-    experience: "2 years",
-    joinDate: "2023-06-05",
-    status: "pending",
-  },
-  {
-    id: "M005",
-    name: "David Clark",
-    email: "david.clark@example.com",
-    specialization: "General Maintenance",
-    experience: "4 years",
-    joinDate: "2023-02-18",
-    status: "rejected",
-  },
-];
-
 const MechanicsManagement: React.FC = () => {
-  const [mechanics, setMechanics] = useState<Mechanic[]>(mockMechanics);
+  const [mechanics, setMechanics] = useState<MechanicWithDetails[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
-  const [selectedMechanic, setSelectedMechanic] = useState<Mechanic | null>(null);
+  const [selectedMechanic, setSelectedMechanic] = useState<MechanicWithDetails | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newMechanic, setNewMechanic] = useState({
     name: "",
@@ -98,6 +43,43 @@ const MechanicsManagement: React.FC = () => {
     specialization: "",
     experience: "",
   });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMechanics = async () => {
+      setLoading(true);
+      try {
+        // Get mechanics from the database
+        const mechanicsList = await db.getUsersByRole('mechanic');
+        
+        // Add mock specialization and experience data
+        // In a real implementation, you would have this data in the database
+        const mechanicsWithDetails: MechanicWithDetails[] = mechanicsList.map((mechanic, index) => {
+          const specializations = ["Engine Repair", "Electrical Systems", "Transmission", "Brake Systems", "General Maintenance"];
+          const experienceYears = ["2 years", "3 years", "4 years", "5 years", "7 years"];
+          
+          return {
+            ...mechanic,
+            specialization: specializations[index % specializations.length],
+            experience: experienceYears[index % experienceYears.length]
+          };
+        });
+        
+        setMechanics(mechanicsWithDetails);
+      } catch (error) {
+        console.error("Error fetching mechanics:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load mechanics data",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMechanics();
+  }, [toast]);
 
   const filteredMechanics = mechanics.filter(
     (mechanic) =>
@@ -105,60 +87,83 @@ const MechanicsManagement: React.FC = () => {
       mechanic.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getStatusBadge = (status: MechanicStatus) => {
-    switch (status) {
-      case "pending":
-        return <Badge className="bg-yellow-100 text-yellow-800">Pending Approval</Badge>;
-      case "approved":
-        return <Badge className="bg-green-100 text-green-800">Approved</Badge>;
-      case "rejected":
-        return <Badge className="bg-red-100 text-red-800">Rejected</Badge>;
-      default:
-        return <Badge>Unknown</Badge>;
+  const getStatusBadge = (isApproved: boolean) => {
+    if (isApproved) {
+      return <Badge className="bg-green-100 text-green-800">Approved</Badge>;
+    } else {
+      return <Badge className="bg-yellow-100 text-yellow-800">Pending Approval</Badge>;
     }
   };
 
-  const handleStatusChange = (id: string, newStatus: MechanicStatus) => {
-    setMechanics((prevMechanics) =>
-      prevMechanics.map((mechanic) =>
-        mechanic.id === id ? { ...mechanic, status: newStatus } : mechanic
-      )
-    );
+  const handleStatusChange = async (id: number, newStatus: boolean) => {
+    try {
+      const success = await db.updateUserStatus(id, newStatus);
+      
+      if (success) {
+        setMechanics((prevMechanics) =>
+          prevMechanics.map((mechanic) =>
+            mechanic.user_id === id ? { ...mechanic, is_approved: newStatus } : mechanic
+          )
+        );
 
-    toast({
-      title: "Status Updated",
-      description: `Mechanic's status has been changed to ${newStatus}`,
-    });
+        toast({
+          title: "Status Updated",
+          description: `Mechanic's status has been changed to ${newStatus ? 'approved' : 'rejected'}`,
+        });
+      } else {
+        throw new Error("Failed to update status");
+      }
+    } catch (error) {
+      console.error("Error updating mechanic status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update mechanic status",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleAddMechanic = () => {
-    const id = `M${String(mechanics.length + 1).padStart(3, '0')}`;
-    const today = new Date().toISOString().split('T')[0];
+  const handleAddMechanic = async () => {
+    try {
+      const newUser = await db.addUser({
+        name: newMechanic.name,
+        email: newMechanic.email,
+        role: 'mechanic',
+        is_approved: false,
+      });
+      
+      const mechanicWithDetails: MechanicWithDetails = {
+        ...newUser,
+        specialization: newMechanic.specialization,
+        experience: newMechanic.experience
+      };
+      
+      setMechanics([...mechanics, mechanicWithDetails]);
+      setIsAddDialogOpen(false);
+      setNewMechanic({
+        name: "",
+        email: "",
+        specialization: "",
+        experience: "",
+      });
 
-    const mechanic: Mechanic = {
-      id,
-      name: newMechanic.name,
-      email: newMechanic.email,
-      specialization: newMechanic.specialization,
-      experience: newMechanic.experience,
-      joinDate: today,
-      status: "pending",
-    };
-
-    setMechanics([...mechanics, mechanic]);
-    setIsAddDialogOpen(false);
-    setNewMechanic({
-      name: "",
-      email: "",
-      specialization: "",
-      experience: "",
-    });
-
-    toast({
-      title: "Mechanic Added",
-      description: "New mechanic has been added and is pending approval",
-    });
+      toast({
+        title: "Mechanic Added",
+        description: "New mechanic has been added and is pending approval",
+      });
+    } catch (error) {
+      console.error("Error adding mechanic:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add mechanic",
+        variant: "destructive",
+      });
+    }
   };
+
+  if (loading) {
+    return <div className="p-6 text-center">Loading mechanics data...</div>;
+  }
 
   return (
     <div className="p-6">
@@ -273,23 +278,23 @@ const MechanicsManagement: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {filteredMechanics.map((mechanic) => (
-                  <TableRow key={mechanic.id}>
-                    <TableCell className="font-medium">{mechanic.id}</TableCell>
+                  <TableRow key={mechanic.user_id}>
+                    <TableCell className="font-medium">M{mechanic.user_id.toString().padStart(3, '0')}</TableCell>
                     <TableCell>{mechanic.name}</TableCell>
                     <TableCell>{mechanic.email}</TableCell>
                     <TableCell>{mechanic.specialization}</TableCell>
                     <TableCell>{mechanic.experience}</TableCell>
-                    <TableCell>{mechanic.joinDate}</TableCell>
-                    <TableCell>{getStatusBadge(mechanic.status)}</TableCell>
+                    <TableCell>{new Date(mechanic.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>{getStatusBadge(mechanic.is_approved)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-2">
-                        {mechanic.status === "pending" && (
+                        {!mechanic.is_approved && (
                           <>
                             <Button
                               variant="outline"
                               size="sm"
                               className="bg-green-50 text-green-700 hover:bg-green-100"
-                              onClick={() => handleStatusChange(mechanic.id, "approved")}
+                              onClick={() => handleStatusChange(mechanic.user_id, true)}
                             >
                               Approve
                             </Button>
@@ -297,13 +302,13 @@ const MechanicsManagement: React.FC = () => {
                               variant="outline"
                               size="sm"
                               className="bg-red-50 text-red-700 hover:bg-red-100"
-                              onClick={() => handleStatusChange(mechanic.id, "rejected")}
+                              onClick={() => handleStatusChange(mechanic.user_id, false)}
                             >
                               Reject
                             </Button>
                           </>
                         )}
-                        {mechanic.status === "approved" && (
+                        {mechanic.is_approved && (
                           <Dialog>
                             <DialogTrigger asChild>
                               <Button
@@ -322,7 +327,7 @@ const MechanicsManagement: React.FC = () => {
                                 <div className="grid gap-4 py-4">
                                   <div className="grid grid-cols-4 items-center gap-4">
                                     <p className="text-right font-medium">ID:</p>
-                                    <p className="col-span-3">{selectedMechanic.id}</p>
+                                    <p className="col-span-3">M{selectedMechanic.user_id.toString().padStart(3, '0')}</p>
                                   </div>
                                   <div className="grid grid-cols-4 items-center gap-4">
                                     <p className="text-right font-medium">Name:</p>
@@ -342,7 +347,7 @@ const MechanicsManagement: React.FC = () => {
                                   </div>
                                   <div className="grid grid-cols-4 items-center gap-4">
                                     <p className="text-right font-medium">Join Date:</p>
-                                    <p className="col-span-3">{selectedMechanic.joinDate}</p>
+                                    <p className="col-span-3">{new Date(selectedMechanic.created_at).toLocaleDateString()}</p>
                                   </div>
                                 </div>
                               )}
@@ -374,22 +379,22 @@ const MechanicsManagement: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {filteredMechanics
-                  .filter((m) => m.status === "pending")
+                  .filter((m) => !m.is_approved)
                   .map((mechanic) => (
-                    <TableRow key={mechanic.id}>
-                      <TableCell className="font-medium">{mechanic.id}</TableCell>
+                    <TableRow key={mechanic.user_id}>
+                      <TableCell className="font-medium">M{mechanic.user_id.toString().padStart(3, '0')}</TableCell>
                       <TableCell>{mechanic.name}</TableCell>
                       <TableCell>{mechanic.email}</TableCell>
                       <TableCell>{mechanic.specialization}</TableCell>
                       <TableCell>{mechanic.experience}</TableCell>
-                      <TableCell>{mechanic.joinDate}</TableCell>
+                      <TableCell>{new Date(mechanic.created_at).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
                           <Button
                             variant="outline"
                             size="sm"
                             className="bg-green-50 text-green-700 hover:bg-green-100"
-                            onClick={() => handleStatusChange(mechanic.id, "approved")}
+                            onClick={() => handleStatusChange(mechanic.user_id, true)}
                           >
                             Approve
                           </Button>
@@ -397,7 +402,7 @@ const MechanicsManagement: React.FC = () => {
                             variant="outline"
                             size="sm"
                             className="bg-red-50 text-red-700 hover:bg-red-100"
-                            onClick={() => handleStatusChange(mechanic.id, "rejected")}
+                            onClick={() => handleStatusChange(mechanic.user_id, false)}
                           >
                             Reject
                           </Button>
@@ -426,15 +431,15 @@ const MechanicsManagement: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {filteredMechanics
-                  .filter((m) => m.status === "approved")
+                  .filter((m) => m.is_approved)
                   .map((mechanic) => (
-                    <TableRow key={mechanic.id}>
-                      <TableCell className="font-medium">{mechanic.id}</TableCell>
+                    <TableRow key={mechanic.user_id}>
+                      <TableCell className="font-medium">M{mechanic.user_id.toString().padStart(3, '0')}</TableCell>
                       <TableCell>{mechanic.name}</TableCell>
                       <TableCell>{mechanic.email}</TableCell>
                       <TableCell>{mechanic.specialization}</TableCell>
                       <TableCell>{mechanic.experience}</TableCell>
-                      <TableCell>{mechanic.joinDate}</TableCell>
+                      <TableCell>{new Date(mechanic.created_at).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="outline"
