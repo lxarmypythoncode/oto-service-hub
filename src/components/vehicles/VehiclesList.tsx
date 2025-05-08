@@ -32,7 +32,10 @@ const VehiclesList: React.FC = () => {
           sixMonthsAgo.setMonth(today.getMonth() - 6);
           
           // If last service date is older than 6 months, mark as service-due
-          const status = lastServiceDate && lastServiceDate < sixMonthsAgo ? "service-due" : "active";
+          // Explicitly type the status as "active" | "service-due" to match the UserVehicle interface
+          const status = lastServiceDate && lastServiceDate < sixMonthsAgo 
+            ? "service-due" as const 
+            : "active" as const;
           
           return {
             ...vehicle,
@@ -40,7 +43,8 @@ const VehiclesList: React.FC = () => {
           };
         });
         
-        setVehicles(processedVehicles);
+        // Explicitly cast the array to UserVehicle[] to ensure type safety
+        setVehicles(processedVehicles as UserVehicle[]);
       } catch (error) {
         console.error("Error fetching vehicles:", error);
         toast({
