@@ -23,6 +23,8 @@ import Mechanics from "./pages/Mechanics";
 import Services from "./pages/Services";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import Reviews from "./pages/Reviews";
+import SubmitReview from "./pages/SubmitReview";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +52,8 @@ const App = () => (
             <Route path="/services" element={<Services />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/reviews" element={<Reviews />} />
+            <Route path="/submit-review" element={<SubmitReview />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

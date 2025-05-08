@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -6,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car, Clock, FileText, Wrench, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import TestimonialsList from "@/components/testimonials/TestimonialsList";
 
 const Index = () => {
   const { user } = useAuth();
@@ -299,6 +299,24 @@ const Index = () => {
         <div className="flex justify-center pt-6">
           <Button size="lg" asChild className="bg-workshop-primary hover:bg-workshop-secondary">
             <Link to={user ? "/book-service" : "/register"}>Book a Service Now</Link>
+          </Button>
+        </div>
+      </section>
+      
+      {/* Testimonials Section */}
+      <section id="testimonials" className="container py-12 md:py-24 space-y-12">
+        <div className="text-center space-y-4">
+          <h2 className="text-3xl md:text-4xl font-bold">What Our Customers Say</h2>
+          <p className="text-xl text-muted-foreground max-w-[800px] mx-auto">
+            Real feedback from real customers who've experienced our service.
+          </p>
+        </div>
+        
+        <TestimonialsList />
+        
+        <div className="flex justify-center pt-6">
+          <Button variant="outline" asChild>
+            <Link to="/reviews">Read More Reviews</Link>
           </Button>
         </div>
       </section>
